@@ -1,0 +1,38 @@
+# Makefile for running migrations
+
+# Migrator variables
+MIGRATOR_PATH=cmd/migrator/main.go
+
+# Migrations variables
+MIGRATIONS_PATH=./migrations
+MIGRATIONS_TABLE=migrations
+
+# Database variables
+DB_HOST=localhost
+DB_PORT=5436
+DB_USER=postgres
+DB_PASSWORD=qwerty
+DB_NAME=sso
+
+# Default target
+.PHONY: all
+all: migrate-up
+
+# Run migrations
+.PHONY: migrate-up
+migrate-up:
+	go run $(MIGRATOR_PATH) -migrations-table=$(MIGRATIONS_TABLE) -db-host=$(DB_HOST) -db-port=$(DB_PORT) -db-user=$(DB_USER) -db-password=$(DB_PASSWORD) -db-name=$(DB_NAME) -migrations-path=$(MIGRATIONS_PATH)
+
+# Rollback migrations
+.PHONY: migrate-down
+migrate-down:
+	go run $(MIGRATOR_PATH) -migrations-table=$(MIGRATIONS_TABLE) -db-host=$(DB_HOST) -db-port=$(DB_PORT) -db-user=$(DB_USER) -db-password=$(DB_PASSWORD) -db-name=$(DB_NAME) -migrations-path=$(MIGRATIONS_PATH) down
+
+# Help command
+.PHONY: help
+help:
+	@echo "Makefile for running migrations"
+	@echo "Usage:"
+	@echo "  make migrate-up   # Apply migrations"
+	@echo "  make migrate-down # Rollback last migration"
+	@echo "  make help        # Show this help message"

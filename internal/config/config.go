@@ -9,10 +9,10 @@ import (
 )
 
 type Config struct {
-	Env         string        `yaml:"env" env-default:"local"`
-	StoragePath string        `yaml:"storage_path" env-required:"true"`
-	TokenTTL    time.Duration `yaml:"token_ttl" env-required:"true"`
-	GRPC        GRPCConfig    `yaml:"grpc"`
+	Env      string         `yaml:"env" env-default:"local"`
+	TokenTTL time.Duration  `yaml:"token_ttl" env-required:"true"`
+	GRPC     GRPCConfig     `yaml:"grpc"`
+	Postgres PostgresConfig `yaml:"postgres"`
 }
 
 type GRPCConfig struct {
@@ -20,6 +20,30 @@ type GRPCConfig struct {
 	Timeout time.Duration `yaml:"timeout"`
 }
 
+type PostgresConfig struct {
+	Host      string `yaml:"host"`
+	Port      string `yaml:"port"`
+	Username  string `yaml:"username"`
+	Password  string `yaml:"password"`
+	Database  string `yaml:"database"`
+	ConnRetry int    `yaml:"conn_retry"`
+}
+
+func MustLoadByPath(configPath string) *Config {
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		panic("config file does not exist: " + configPath)
+	}
+
+	var cfg Config
+
+	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
+		panic("failed to read config: " + err.Error())
+	}
+
+	return &cfg
+
+}
 func MustLoad() *Config {
 	path := fetchConfigPath()
 	if path == "" {
@@ -32,7 +56,7 @@ func MustLoad() *Config {
 	var cfg Config
 
 	if err := cleanenv.ReadConfig(path, &cfg); err != nil {
-		panic(err)
+		panic("failed to read config: " + err.Error())
 	}
 
 	return &cfg
