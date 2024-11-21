@@ -5,14 +5,50 @@ import (
 	"os"
 	"time"
 
+	"github.com/FurmanovVitaliy/logger"
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type Config struct {
-	Env      string         `yaml:"env" env-default:"local"`
+	Env      string         `yaml:"environment" env-default:"prod"`
 	TokenTTL time.Duration  `yaml:"token_ttl" env-required:"true"`
+	Logger   LoggerConfig   `yaml:"logger"`
 	GRPC     GRPCConfig     `yaml:"grpc"`
 	Postgres PostgresConfig `yaml:"postgres"`
+}
+
+func (c *Config) LogValue() logger.Value {
+	return logger.GroupValue(
+		logger.StringAttr("env", c.Env),
+		logger.StringAttr("token_ttl", c.TokenTTL.String()),
+		logger.Group(
+			"logger",
+			logger.StringAttr("level", c.Logger.Level),
+			logger.BoolAttr("json", c.Logger.JSON),
+			logger.BoolAttr("source", c.Logger.Source),
+		),
+		logger.Group(
+			"grpc",
+			logger.IntAttr("port", c.GRPC.Port),
+			logger.DurationAttr("timeout", c.GRPC.Timeout),
+		),
+		logger.Group(
+			"postgres",
+			logger.StringAttr("host", c.Postgres.Host),
+			logger.StringAttr("port", c.Postgres.Port),
+			logger.StringAttr("username", c.Postgres.Username),
+			logger.StringAttr("password", "REMOVED"),
+			logger.StringAttr("database", c.Postgres.Database),
+			logger.IntAttr("conn_retry", c.Postgres.ConnRetry),
+		),
+		logger.StringAttr("app_secret", "REMOVED"),
+	)
+}
+
+type LoggerConfig struct {
+	Level  string `yaml:"level"`
+	JSON   bool   `yaml:"json" `
+	Source bool   `yaml:"source" `
 }
 
 type GRPCConfig struct {

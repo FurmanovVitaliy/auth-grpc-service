@@ -1,3 +1,5 @@
 .history
+.vscode
 config/local.yaml
 internal/lib/logger
+

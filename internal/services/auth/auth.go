@@ -11,9 +11,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/FurmanovVitaliy/auth-grpc-service/internal/domain/models"
-	"github.com/FurmanovVitaliy/auth-grpc-service/internal/lib/jwt"
-	"github.com/FurmanovVitaliy/auth-grpc-service/internal/lib/logger/sl"
 	"github.com/FurmanovVitaliy/auth-grpc-service/internal/storage"
+	"github.com/FurmanovVitaliy/auth-grpc-service/pkg/jwt"
+	"github.com/FurmanovVitaliy/logger"
 )
 
 type Auth struct {
@@ -79,15 +79,15 @@ func (a *Auth) Login(
 	user, err := a.userProvider.User(ctx, email)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
-			a.log.Warn("user not found", sl.Err(err))
+			a.log.Warn("user not found", logger.ErrAttr(err))
 			return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 		}
-		a.log.Error("failed to get the user", sl.Err(err))
+		a.log.Error("failed to get the user", logger.ErrAttr(err))
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PassHash), []byte(password)); err != nil {
-		a.log.Warn("invalid password", sl.Err(err))
+		a.log.Warn("invalid password", logger.ErrAttr(err))
 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
@@ -100,7 +100,7 @@ func (a *Auth) Login(
 
 	token, err := jwt.NewToken(user, app, a.tokenTTL)
 	if err != nil {
-		a.log.Error("failed to create a token", sl.Err(err))
+		a.log.Error("failed to create a token", logger.ErrAttr(err))
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -122,17 +122,17 @@ func (a *Auth) Register(
 
 	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Error("failed to hash the password", sl.Err(err))
+		log.Error("failed to hash the password", logger.ErrAttr(err))
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
 	id, err := a.userRegistrator.Register(ctx, email, string(passHash))
 	if err != nil {
 		if errors.Is(err, storage.ErrUserAlreadyExists) {
-			log.Warn("user already exists", sl.Err(err))
+			log.Warn("user already exists", logger.ErrAttr(err))
 			return 0, fmt.Errorf("%s: %w", op, ErrUserAlreadyExists)
 		}
-		log.Error("failed to register the user", sl.Err(err))
+		log.Error("failed to register the user", logger.ErrAttr(err))
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 

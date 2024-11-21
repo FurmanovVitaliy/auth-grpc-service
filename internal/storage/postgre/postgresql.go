@@ -8,7 +8,7 @@ import (
 
 	"github.com/FurmanovVitaliy/auth-grpc-service/internal/domain/models"
 	"github.com/FurmanovVitaliy/auth-grpc-service/internal/storage"
-	"github.com/FurmanovVitaliy/auth-grpc-service/pkg/clent/postgre"
+	"github.com/FurmanovVitaliy/auth-grpc-service/pkg/clents/postgre"
 	"github.com/jackc/pgconn"
 )
 
