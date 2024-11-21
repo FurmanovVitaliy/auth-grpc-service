@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -8,7 +9,7 @@ import (
 
 	"github.com/FurmanovVitaliy/auth-grpc-service/internal/app"
 	"github.com/FurmanovVitaliy/auth-grpc-service/internal/config"
-	"github.com/FurmanovVitaliy/auth-grpc-service/internal/lib/logger/handlers/slogpretty"
+	"github.com/FurmanovVitaliy/logger"
 )
 
 const (
@@ -18,11 +19,31 @@ const (
 )
 
 func main() {
+	var log *slog.Logger
+
+	ctx := context.Background()
+	logger.ExtractLogger(ctx).Info("starting sso-service")
+	logger.ExtractLogger(ctx).Info("loading configuration")
 	cfg := config.MustLoad()
 
-	log := setUpLogger(cfg.Env)
-
-	log.Info("starting application")
+	//Set up logger
+	switch cfg.Env {
+	case envLocal:
+		log = logger.NewLogger(
+			logger.WithLevel(cfg.Logger.Level), logger.IsJSON(false),
+			logger.WithSource(cfg.Logger.Source), logger.IsPrettyOut(true),
+		)
+	case envDev:
+		log = logger.NewLogger(
+			logger.WithLevel(cfg.Logger.Level), logger.IsJSON(cfg.Logger.JSON),
+			logger.WithSource(cfg.Logger.Source),
+		)
+	case envProd:
+		log = logger.NewLogger(
+			logger.WithLevel(cfg.Logger.Level), logger.IsJSON(cfg.Logger.JSON),
+			logger.WithSource(cfg.Logger.Source),
+		)
+	}
 
 	application := app.New(
 		log,
@@ -47,35 +68,4 @@ func main() {
 	log.Info("stopping postgreSQL connection")
 	application.DbConnection.Close()
 	log.Info("application stopped")
-}
-
-func setUpLogger(env string) *slog.Logger {
-	var log *slog.Logger
-
-	switch env {
-	case envLocal:
-		log = setupPrettySlog()
-	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
-	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
-	}
-
-	return log
-}
-
-func setupPrettySlog() *slog.Logger {
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		},
-	}
-
-	handler := opts.NewPrettyHandler(os.Stdout)
-
-	return slog.New(handler)
 }

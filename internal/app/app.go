@@ -8,7 +8,7 @@ import (
 	grpcapp "github.com/FurmanovVitaliy/auth-grpc-service/internal/app/grpc"
 	"github.com/FurmanovVitaliy/auth-grpc-service/internal/services/auth"
 	"github.com/FurmanovVitaliy/auth-grpc-service/internal/storage/postgre"
-	pgClient "github.com/FurmanovVitaliy/auth-grpc-service/pkg/clent/postgre"
+	pgClient "github.com/FurmanovVitaliy/auth-grpc-service/pkg/clents/postgre"
 )
 
 type App struct {
