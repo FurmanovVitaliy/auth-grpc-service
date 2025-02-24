@@ -10,17 +10,22 @@ import (
 )
 
 type Config struct {
-	Env      string         `yaml:"environment" env-default:"prod"`
-	TokenTTL time.Duration  `yaml:"token_ttl" env-required:"true"`
-	Logger   LoggerConfig   `yaml:"logger"`
-	GRPC     GRPCConfig     `yaml:"grpc"`
-	Postgres PostgresConfig `yaml:"postgres"`
+	Env             string             `yaml:"environment" env-default:"prod"`
+	AccessTokenTTL  time.Duration      `yaml:"a_token_ttl" env-required:"true"`
+	RefreshTokenTTL time.Duration      `yaml:"r_token_ttl" env-required:"true"`
+	Logger          LoggerConfig       `yaml:"logger"`
+	GRPC            GRPCConfig         `yaml:"grpc"`
+	Postgres        PostgresConfig     `yaml:"postgres"`
+	Redis           RedisConfig        `yaml:"redis"`
+	Cert            CertificatesConfig `yaml:"certificates"`
+	Providers       ProviderConfig     `yaml:"providers"`
 }
 
 func (c *Config) LogValue() logger.Value {
 	return logger.GroupValue(
 		logger.StringAttr("env", c.Env),
-		logger.StringAttr("token_ttl", c.TokenTTL.String()),
+		logger.StringAttr("a_token_ttl", c.AccessTokenTTL.String()),
+		logger.StringAttr("r_token_ttl", c.RefreshTokenTTL.String()),
 		logger.Group(
 			"logger",
 			logger.StringAttr("level", c.Logger.Level),
@@ -41,6 +46,18 @@ func (c *Config) LogValue() logger.Value {
 			logger.StringAttr("database", c.Postgres.Database),
 			logger.IntAttr("conn_retry", c.Postgres.ConnRetry),
 		),
+		logger.Group(
+			"redis",
+			logger.StringAttr("host", c.Redis.Host),
+			logger.StringAttr("port", c.Redis.Port),
+			logger.StringAttr("password", "REMOVED"),
+			logger.IntAttr("db", c.Redis.Database),
+		),
+		logger.Group(
+			"certificates",
+			logger.StringAttr("cert", c.Cert.Cert),
+			logger.StringAttr("key", c.Cert.Key),
+		),
 		logger.StringAttr("app_secret", "REMOVED"),
 	)
 }
@@ -52,8 +69,9 @@ type LoggerConfig struct {
 }
 
 type GRPCConfig struct {
-	Port    int           `yaml:"port"`
-	Timeout time.Duration `yaml:"timeout"`
+	Port       int           `yaml:"port"`
+	TLSEnabled bool          `yaml:"tls_enabled"`
+	Timeout    time.Duration `yaml:"timeout"`
 }
 
 type PostgresConfig struct {
@@ -63,6 +81,28 @@ type PostgresConfig struct {
 	Password  string `yaml:"password"`
 	Database  string `yaml:"database"`
 	ConnRetry int    `yaml:"conn_retry"`
+}
+type RedisConfig struct {
+	Host     string `yaml:"host"`
+	Port     string `yaml:"port"`
+	Password string `yaml:"password"`
+	Database int    `yaml:"db"`
+}
+
+type CertificatesConfig struct {
+	Cert string `yaml:"cert"`
+	Key  string `yaml:"key"`
+}
+
+type ProviderConfig struct {
+	GithubPrivider PrividerConfig `yaml:"github"`
+	GoogleProvider PrividerConfig `yaml:"google"`
+}
+
+type PrividerConfig struct {
+	ID       string `yaml:"id"`
+	Secret   string `yaml:"secret"`
+	Callback string `yaml:"callback"`
 }
 
 func MustLoadByPath(configPath string) *Config {

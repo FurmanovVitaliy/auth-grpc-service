@@ -1,0 +1,50 @@
+app:
+  name: sso-service
+  version: 0.1.0
+
+environment: local #local, dev, prod
+
+logger:
+  level: debug #debug, info, warn, error
+  json: false 
+  source: true
+
+a_token_ttl: 15m
+r_token_ttl: 44640m
+
+
+grpc:
+  port: 44044
+  tls_enabled: true
+  timeout: 20s
+
+postgres:
+  host: "localhost"
+  port: 5436
+  database: "sso"
+  username: "postgres"
+  password: "qwerty"
+  conn_retry: 5
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: "qwerty"
+  db: 0
+  conn_retry: 5
+  
+
+certificates:
+  cert: ./cert/cert.pem
+  key: ./cert/key.pem
+
+#!SECRETS
+providers:
+  github:
+    id: "your client id "
+    secret: "your client secret" 
+    callback: "call back"
+  google:
+    id: ""
+    secret: ""
+    callback: "https://localhost:8000/auth/google-callback"
