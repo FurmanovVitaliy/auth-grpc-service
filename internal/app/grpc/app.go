@@ -1,13 +1,18 @@
 package grpcapp
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net"
+	"time"
 
 	authgrpc "github.com/FurmanovVitaliy/auth-grpc-service/internal/grpc/auth"
+	"github.com/FurmanovVitaliy/logger"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 )
 
 type App struct {
@@ -19,11 +24,26 @@ type App struct {
 // New create a new gRPC Server
 func New(
 	log *slog.Logger,
-	authgSetvice authgrpc.Auth,
 	port int,
+	tlsEnabled bool,
+	timeout time.Duration,
+	tlsCertFile string,
+	tlsKeyFile string,
+	authgService authgrpc.Auth,
 ) *App {
-	gRPCServer := grpc.NewServer()
-	authgrpc.Register(gRPCServer, authgSetvice)
+	var opts []grpc.ServerOption
+	if tlsEnabled {
+		creds, err := credentials.NewServerTLSFromFile(tlsCertFile, tlsKeyFile)
+		if err != nil {
+			log.Error("failed to create TLS credentials", logger.ErrAttr(err))
+			panic(err)
+		}
+		opts = append(opts, grpc.Creds(creds))
+	}
+	opts = append(opts, grpc.UnaryInterceptor(timeoutInterceptor(timeout)))
+
+	gRPCServer := grpc.NewServer(opts...)
+	authgrpc.Register(gRPCServer, authgService)
 
 	return &App{
 		log:        log,
@@ -41,10 +61,12 @@ func (a *App) MustRun() {
 func (a *App) Run() error {
 	const op = "grpcapp.App.Run"
 
+	reflection.Register(a.gRPCServer)
+
 	log := a.log.With(
 		slog.String("op", op),
-		slog.Int("port", a.port),
 	)
+
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -53,7 +75,9 @@ func (a *App) Run() error {
 	if err := a.gRPCServer.Serve(l); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
 	return nil
+
 }
 
 func (a *App) Stop() {
@@ -61,6 +85,18 @@ func (a *App) Stop() {
 	const op = "grpcapp.App.Stop"
 	a.log.With(slog.String("op", op)).
 		Info("stoping gRPC server", slog.Int("port", a.port))
-
 	a.gRPCServer.GracefulStop()
+}
+
+func timeoutInterceptor(timeout time.Duration) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		return handler(ctx, req)
+	}
 }

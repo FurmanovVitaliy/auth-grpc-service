@@ -12,60 +12,57 @@ import (
 	"github.com/FurmanovVitaliy/logger"
 )
 
-const (
-	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
-)
-
 func main() {
 	var log *slog.Logger
-
 	ctx := context.Background()
+
 	logger.ExtractLogger(ctx).Info("starting sso-service")
 	logger.ExtractLogger(ctx).Info("loading configuration")
+
 	cfg := config.MustLoad()
 
-	//Set up logger
 	switch cfg.Env {
-	case envLocal:
+	case "local":
 		log = logger.NewLogger(
 			logger.WithLevel(cfg.Logger.Level), logger.IsJSON(false),
 			logger.WithSource(cfg.Logger.Source), logger.IsPrettyOut(true),
 		)
-	case envDev:
+	case "dev":
 		log = logger.NewLogger(
 			logger.WithLevel(cfg.Logger.Level), logger.IsJSON(cfg.Logger.JSON),
 			logger.WithSource(cfg.Logger.Source),
 		)
-	case envProd:
+	case "prod":
 		log = logger.NewLogger(
 			logger.WithLevel(cfg.Logger.Level), logger.IsJSON(cfg.Logger.JSON),
 			logger.WithSource(cfg.Logger.Source),
 		)
 	}
 
+	log.Info("configuration loaded", "config", cfg.LogValue())
+
 	application := app.New(
 		log,
-		cfg.TokenTTL,
-		cfg.GRPC.Port,
-		cfg.Postgres.Host,
-		cfg.Postgres.Port,
-		cfg.Postgres.Username,
-		cfg.Postgres.Password,
-		cfg.Postgres.Database)
+		cfg,
+	)
 
 	go func() {
 		application.GRPCServer.MustRun()
 	}()
 
-	//Graceful shutdown
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
 	call := <-stop
+
 	log.Info("stopping application", slog.String("signal", call.String()))
 	application.GRPCServer.Stop()
+
 	log.Info("stopping postgreSQL connection")
 	application.DbConnection.Close()
+
+	log.Info("stopping redis connection")
+	application.CacheConnection.Close()
+
 	log.Info("application stopped")
 }
